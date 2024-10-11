@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import os
-import subprocess
 import requests
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urljoin
+import subprocess
+
 
 # Couleurs pour le terminal
 class Colors:
@@ -19,14 +19,12 @@ class Colors:
 def print_banner():
     banner = f'''
 {Colors.BLUE}
-
  █████╗ ██╗     ██╗         ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗
 ██╔══██╗██║     ██║         ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║
 ███████║██║     ██║         ██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║
 ██╔══██║██║     ██║         ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
 ██║  ██║███████╗███████╗    ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
-╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝            
-
+╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝                                            
     {Colors.RESET}
     '''
     print(banner)
@@ -43,19 +41,54 @@ def enumerate_subdomains(domain):
     print(f"{Colors.GREEN}Found {len(subdomains)} subdomains.{Colors.RESET}")
     return subdomains
 
-# Fonction pour crawler les URLs sur un sous-domaine
-def crawl_subdomain(subdomain):
+# Fonction pour récupérer un jeton CSRF (si nécessaire)
+def get_csrf_token(response_text):
+    soup = BeautifulSoup(response_text, 'html.parser')
+    token_tag = soup.find('input', {'name': 'csrf_token'})
+    return token_tag.get('value') if token_tag else None
+
+# Fonction pour suivre les redirections manuellement
+def follow_redirects(url, headers, max_redirects=5):
+    for _ in range(max_redirects):
+        response = requests.get(url, headers=headers, allow_redirects=False)
+        if response.status_code in (301, 302):
+            url = response.headers['Location']
+            print(f"{Colors.YELLOW}Redirected to {url}{Colors.RESET}")
+        else:
+            return response
+    print(f"{Colors.RED}Too many redirects{Colors.RESET}")
+    return None
+
+# Fonction pour crawler les URLs sur un sous-domaine avec cookies et redirections
+def crawl_subdomain(subdomain, cookies=None, user_agent=None):
     print(f"{Colors.BLUE}Crawling URLs for {subdomain}...{Colors.RESET}")
-    try:
-        response = requests.get(f"http://{subdomain}")
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # Utilisation de urljoin pour s'assurer que les URLs sont complètes
-        urls = [urljoin(f"http://{subdomain}", link.get('href')) for link in soup.find_all('a', href=True)]
-        print(f"{Colors.GREEN}Found {len(urls)} URLs on {subdomain}.{Colors.RESET}")
-        return urls
-    except requests.exceptions.RequestException as e:
-        print(f"{Colors.RED}Failed to crawl {subdomain}: {e}{Colors.RESET}")
-        return []
+    
+    # Configuration des headers
+    headers = {
+        'User-Agent': user_agent if user_agent else 'Mozilla/5.0 (compatible;)',
+        'Cookie': cookies if cookies else '',
+    }
+
+    # Faire une requête HTTP
+    response = requests.get(f"http://{subdomain}", headers=headers, allow_redirects=False)
+    
+    # Suivi des redirections manuelles
+    if response.status_code in (301, 302):
+        redirect_url = response.headers['Location']
+        print(f"{Colors.YELLOW}Redirected to {redirect_url}{Colors.RESET}")
+        response = follow_redirects(redirect_url, headers)
+
+    # Récupérer le jeton CSRF si nécessaire
+    csrf_token = get_csrf_token(response.text) if response else None
+    if csrf_token:
+        headers['X-CSRF-Token'] = csrf_token
+
+    # Parser le contenu HTML pour extraire les URLs
+    soup = BeautifulSoup(response.text, 'html.parser')
+    urls = [urljoin(f"http://{subdomain}", link.get('href')) for link in soup.find_all('a', href=True)]
+    
+    print(f"{Colors.GREEN}Found {len(urls)} URLs on {subdomain}.{Colors.RESET}")
+    return urls
 
 # Fonction pour filtrer les URLs potentiellement vulnérables
 def filter_vulnerable_urls(urls):
@@ -69,8 +102,22 @@ def main():
     # Affichage de la bannière
     print_banner()
 
+    # Saisie du domaine cible
     domain = input(f"{Colors.YELLOW}Enter the domain to enumerate subdomains: {Colors.RESET}")
     
+    # Option pour ajouter un cookie personnalisé
+    use_cookie = input(f"{Colors.YELLOW}Do you want to provide a custom cookie for authentication? (y/n): {Colors.RESET}").lower()
+    cookies = None
+    if use_cookie == 'y':
+        cookies = input(f"{Colors.YELLOW}Enter your cookie: {Colors.RESET}")
+
+    # Option pour ajouter un user-agent personnalisé (pour Intigriti par exemple)
+    use_user_agent = input(f"{Colors.YELLOW}Do you want to provide a custom user agent (for compliance)? (y/n): {Colors.RESET}").lower()
+    user_agent = None
+    if use_user_agent == 'y':
+        username = input(f"{Colors.YELLOW}Enter your custom user-agent: {Colors.RESET}")
+        user_agent = f"user-agent:{username}"
+
     # Étape 1: Énumération des sous-domaines
     subdomains = enumerate_subdomains(domain)
     if not subdomains:
@@ -82,7 +129,7 @@ def main():
     
     # Étape 2: Crawler des sous-domaines et collecte des URLs
     for subdomain in subdomains:
-        urls = crawl_subdomain(subdomain)
+        urls = crawl_subdomain(subdomain, cookies=cookies, user_agent=user_agent)
         all_urls.extend(urls)
         
         # Étape 3: Filtrage des URLs vulnérables
