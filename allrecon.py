@@ -24,7 +24,7 @@ def print_banner():
 ... ██╔══██║██║     ██║         ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
 ... ██║  ██║███████╗███████╗    ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
 ... ╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
-... @https://github.com/yaryatchii                                         
+... @https://github.com/yaryatchii                                          
     {Colors.RESET}
     '''
     print(banner)
@@ -41,72 +41,22 @@ def enumerate_subdomains(domain):
     print(f"{Colors.GREEN}Found {len(subdomains)} subdomains.{Colors.RESET}")
     return subdomains
 
-# Vérification si l'URL est dans le domaine scope (ndd et sous-domaines)
+# Vérification si l'URL est dans le domaine scope (oda.com et sous-domaines)
 def is_in_scope(url, base_domain):
     parsed_url = urlparse(url)
     domain = parsed_url.netloc
     return domain.endswith(f".{base_domain}") or domain == base_domain
 
-# Fonction pour récupérer un jeton CSRF (si nécessaire)
-def get_csrf_token(response_text):
-    soup = BeautifulSoup(response_text, 'html.parser')
-    token_tag = soup.find('input', {'name': 'csrf_token'})
-    return token_tag.get('value') if token_tag else None
-
-# Fonction pour suivre les redirections manuellement
-def follow_redirects(url, headers, base_url=None, max_redirects=5):
-    for _ in range(max_redirects):
-        if url.startswith('/'):
-            # Si l'URL redirigée est relative, ajoutez le schéma et le domaine de base
-            url = urljoin(base_url, url)
-        
-        response = requests.get(url, headers=headers, allow_redirects=False)
-        
-        if response.status_code in (301, 302):
-            url = response.headers['Location']
-            print(f"{Colors.YELLOW}Redirected to {url}{Colors.RESET}")
-        else:
-            return response
-    
-    print(f"{Colors.RED}Too many redirects{Colors.RESET}")
-    return None
-
-# Fonction pour crawler les URLs sur un sous-domaine avec cookies et redirections
-def crawl_subdomain(subdomain, cookies=None, user_agent=None):
-    print(f"{Colors.BLUE}Crawling URLs for {subdomain}...{Colors.RESET}")
-    
-    headers = {
-        'User-Agent': user_agent if user_agent else 'Mozilla/5.0 (compatible;)',
-        'Cookie': cookies if cookies else '',
-    }
-
-    try:
-        response = requests.get(f"https://{subdomain}", headers=headers, allow_redirects=False)
-    except requests.exceptions.ConnectionError:
-        print(f"{Colors.RED}HTTPS connection failed for {subdomain}. Trying HTTP...{Colors.RESET}")
-        try:
-            response = requests.get(f"http://{subdomain}", headers=headers, allow_redirects=False)
-        except requests.exceptions.ConnectionError:
-            print(f"{Colors.RED}HTTP connection also failed for {subdomain}.{Colors.RESET}")
-            return []
-
-    if response.status_code in (301, 302):
-        redirect_url = response.headers['Location']
-        print(f"{Colors.YELLOW}Redirected to {redirect_url}{Colors.RESET}")
-        response = follow_redirects(redirect_url, headers, base_url=f"https://{subdomain}")
-
-    if response is None:
-        print(f"{Colors.RED}Failed to get a valid response from {subdomain}.{Colors.RESET}")
+# Fonction pour récupérer toutes les URLs via la commande 'gau'
+def get_all_urls_with_gau(domain):
+    print(f"{Colors.BLUE}Retrieving URLs for {domain} using gau...{Colors.RESET}")
+    command = f"gau {domain}"  # Commande gau pour obtenir toutes les URLs
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"{Colors.RED}Error: Unable to retrieve URLs using gau for {domain}.{Colors.RESET}")
         return []
-
-    csrf_token = get_csrf_token(response.text) if response else None
-    if csrf_token:
-        headers['X-CSRF-Token'] = csrf_token
-
-    soup = BeautifulSoup(response.text, 'html.parser')
-    urls = [urljoin(f"https://{subdomain}", link.get('href')) for link in soup.find_all('a', href=True)]
-    
-    print(f"{Colors.GREEN}Found {len(urls)} URLs on {subdomain}.{Colors.RESET}")
+    urls = result.stdout.splitlines()
+    print(f"{Colors.GREEN}Found {len(urls)} URLs using gau for {domain}.{Colors.RESET}")
     return urls
 
 # Fonction pour filtrer les URLs potentiellement vulnérables et exclure celles hors scope
@@ -144,16 +94,23 @@ def main():
         username = input(f"{Colors.YELLOW}Enter your custom user agent: {Colors.RESET}")
         user_agent = f"user-agent:{username}"
 
+    # Énumérer les sous-domaines
     subdomains = enumerate_subdomains(domain)
     if not subdomains:
         print(f"{Colors.RED}No subdomains found. Exiting...{Colors.RESET}")
         return
 
-    all_urls = []
-    vulnerable_urls = []
-    
+    # Récupérer les URLs pour le domaine principal
+    print(f"{Colors.YELLOW}Processing domain: {domain}{Colors.RESET}")
+    domain_urls = get_all_urls_with_gau(domain)
+    vulnerable_domain_urls = filter_vulnerable_urls(domain_urls, domain)
+
+    all_urls = domain_urls  # Inclure les URLs du domaine principal
+    vulnerable_urls = vulnerable_domain_urls  # Inclure les URLs vulnérables du domaine principal
+
+    # Récupérer les URLs pour chaque sous-domaine
     for subdomain in subdomains:
-        urls = crawl_subdomain(subdomain, cookies=cookies, user_agent=user_agent)
+        urls = get_all_urls_with_gau(subdomain)  # Appel à 'gau' pour obtenir toutes les URLs
         all_urls.extend(urls)
         vulnerable_urls.extend(filter_vulnerable_urls(urls, domain))
 
