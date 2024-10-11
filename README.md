@@ -21,26 +21,31 @@ Avant de commencer, assurez-vous d'avoir installé les éléments suivants :
 
 ### Installation de Subfinder
 
+```bash
 go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 Installation des dépendances Python
-
+bash
+Copier le code
 pip install -r requirements.txt
 Utilisation
 Clonez ce dépôt :
-
+bash
+Copier le code
 git clone https://github.com/votre-utilisateur/allrecon.git
 cd allrecon
 Installez les dépendances comme mentionné ci-dessus.
 
 Lancez le script avec la commande suivante :
 
-
+bash
+Copier le code
 python allrecon.py
 Vous verrez la bannière d'introduction Allrecon s'afficher.
 
 Saisissez le domaine pour lequel vous souhaitez effectuer l'énumération des sous-domaines :
 
-
+bash
+Copier le code
 Enter the domain to enumerate subdomains: example.com
 Le script exécutera les étapes suivantes :
 Énumération des sous-domaines.
@@ -52,7 +57,8 @@ vuln.txt : Contient uniquement les URLs potentiellement vulnérables.
 Exemple
 Si vous saisissez example.com comme domaine, voici un exemple de sortie :
 
-
+bash
+Copier le code
 Enumerating subdomains for example.com...
 Found 5 subdomains.
 Crawling URLs for www.example.com...
