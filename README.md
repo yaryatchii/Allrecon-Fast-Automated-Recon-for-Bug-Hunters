@@ -49,31 +49,31 @@
 cd allrecon</code></pre>
     </li>
 
-    <li>Installez les dépendances comme mentionné ci-dessus.</li>
+    Installez les dépendances comme mentionné ci-dessus.
 
-    <li>Lancez le script avec la commande suivante :
-        <pre><code>python allrecon.py</code></pre>
-    </li>
+    Lancez le script avec la commande suivante :
+        python allrecon.py
+    
 
-    <li>Vous verrez la bannière d'introduction <strong>Allrecon</strong> s'afficher.</li>
+    Vous verrez la bannière d'introduction Allrecon s'afficher.
 
-    <li>Saisissez le domaine pour lequel vous souhaitez effectuer l'énumération des sous-domaines :
-        <pre><code>Enter the domain to enumerate subdomains: example.com</code></pre>
-    </li>
+    Saisissez le domaine pour lequel vous souhaitez effectuer l'énumération des sous-domaines :
+        Enter the domain to enumerate subdomains: example.com
+    
 
-    <li>Le script exécutera les étapes suivantes :
-        <ul>
-            <li>Énumération des sous-domaines.</li>
-            <li>Crawling des sous-domaines pour récupérer les URLs.</li>
-            <li>Filtrage des URLs vulnérables (URLs contenant des paramètres).</li>
-            <li>Sauvegarde des résultats dans deux fichiers :
-                <ul>
-                    <li><code>output.txt</code> : Contient toutes les URLs.</li>
-                    <li><code>vuln.txt</code> : Contient uniquement les URLs potentiellement vulnérables.</li>
-                </ul>
-            </li>
-        </ul>
-    </li>
+    Le script exécutera les étapes suivantes :
+        
+            Énumération des sous-domaines.</li>
+            Crawling des sous-domaines pour récupérer les URLs.
+            Filtrage des URLs vulnérables (URLs contenant des paramètres).
+            Sauvegarde des résultats dans deux fichiers :
+                
+                   output.txt : Contient toutes les URLs.
+                   vuln.txt : Contient uniquement les URLs potentiellement vulnérables.
+               
+            
+        
+    
 </ol>
 
 <h2>Exemple</h2>
