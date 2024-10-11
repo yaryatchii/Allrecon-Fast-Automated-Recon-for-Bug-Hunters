@@ -63,7 +63,7 @@ cd allrecon</code></pre>
 
     Le script exécutera les étapes suivantes :
         
-            Énumération des sous-domaines.</li>
+            Énumération des sous-domaines.
             Crawling des sous-domaines pour récupérer les URLs.
             Filtrage des URLs vulnérables (URLs contenant des paramètres).
             Sauvegarde des résultats dans deux fichiers :
