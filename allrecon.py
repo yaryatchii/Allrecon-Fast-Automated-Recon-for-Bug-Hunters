@@ -41,7 +41,7 @@ def enumerate_subdomains(domain):
     print(f"{Colors.GREEN}Found {len(subdomains)} subdomains.{Colors.RESET}")
     return subdomains
 
-# Vérification si l'URL est dans le domaine scope (oda.com et sous-domaines)
+# Vérification si l'URL est dans le domaine scope (ndd et sous-domaines)
 def is_in_scope(url, base_domain):
     parsed_url = urlparse(url)
     domain = parsed_url.netloc
@@ -112,7 +112,8 @@ def main():
     for subdomain in subdomains:
         urls = get_all_urls_with_gau(subdomain)  # Appel à 'gau' pour obtenir toutes les URLs
         all_urls.extend(urls)
-        vulnerable_urls.extend(filter_vulnerable_urls(urls, domain))
+        vulnerable_subdomain_urls = filter_vulnerable_urls(urls, domain)  # Filtrer pour les sous-domaines
+        vulnerable_urls.extend(vulnerable_subdomain_urls)  # Ajouter les URLs vulnérables des sous-domaines
 
     cleaned_urls = clean_urls(vulnerable_urls)
 
