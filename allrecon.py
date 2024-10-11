@@ -3,6 +3,7 @@ import subprocess
 import requests
 from bs4 import BeautifulSoup
 import re
+from urllib.parse import urljoin
 
 # Couleurs pour le terminal
 class Colors:
@@ -16,12 +17,14 @@ class Colors:
 def print_banner():
     banner = f'''
 {Colors.BLUE}
+
  █████╗ ██╗     ██╗         ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗
 ██╔══██╗██║     ██║         ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║
 ███████║██║     ██║         ██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║
 ██╔══██║██║     ██║         ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
 ██║  ██║███████╗███████╗    ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
-╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝                                           
+╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝            
+
     {Colors.RESET}
     '''
     print(banner)
@@ -44,7 +47,8 @@ def crawl_subdomain(subdomain):
     try:
         response = requests.get(f"http://{subdomain}")
         soup = BeautifulSoup(response.text, 'html.parser')
-        urls = [link.get('href') for link in soup.find_all('a', href=True)]
+        # Utilisation de urljoin pour s'assurer que les URLs sont complètes
+        urls = [urljoin(f"http://{subdomain}", link.get('href')) for link in soup.find_all('a', href=True)]
         print(f"{Colors.GREEN}Found {len(urls)} URLs on {subdomain}.{Colors.RESET}")
         return urls
     except requests.exceptions.RequestException as e:
@@ -93,4 +97,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
