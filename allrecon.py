@@ -24,7 +24,7 @@ def print_banner():
 ... ██╔══██║██║     ██║         ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
 ... ██║  ██║███████╗███████╗    ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
 ... ╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
-... @https://github.com/yaryatchii                                          
+... @https://github.com/yaryatchii                                         
     {Colors.RESET}
     '''
     print(banner)
@@ -83,6 +83,9 @@ def main():
 
     domain = input(f"{Colors.YELLOW}Enter the domain to enumerate subdomains: {Colors.RESET}")
     
+    # Choix du mode d'exécution avec 1 ou 2
+    mode = input(f"{Colors.YELLOW}Choose an option:\n1. Scan only the main domain\n2. Scan the main domain and subdomains\nEnter 1 or 2: {Colors.RESET}").strip()
+
     use_cookie = input(f"{Colors.YELLOW}Do you want to provide a custom cookie for authentication? (y/n): {Colors.RESET}").lower()
     cookies = None
     if use_cookie == 'y':
@@ -94,33 +97,54 @@ def main():
         username = input(f"{Colors.YELLOW}Enter your custom user agent: {Colors.RESET}")
         user_agent = f"user-agent:{username}"
 
-    # Énumérer les sous-domaines
-    subdomains = enumerate_subdomains(domain)
-    if not subdomains:
-        print(f"{Colors.RED}No subdomains found. Exiting...{Colors.RESET}")
+    all_urls = []
+    vulnerable_urls = []
+
+    # Mode de scan unique du domaine principal (option 1)
+    if mode == '1':
+        print(f"{Colors.YELLOW}Processing only the main domain: {domain}{Colors.RESET}")
+        domain_urls = get_all_urls_with_gau(domain)
+        vulnerable_domain_urls = filter_vulnerable_urls(domain_urls, domain)
+        all_urls = domain_urls
+        vulnerable_urls = vulnerable_domain_urls
+
+    # Mode complet avec sous-domaines (option 2)
+    elif mode == '2':
+        # Récupérer les URLs pour le domaine principal
+        print(f"{Colors.YELLOW}Processing domain: {domain}{Colors.RESET}")
+        domain_urls = get_all_urls_with_gau(domain)
+        vulnerable_domain_urls = filter_vulnerable_urls(domain_urls, domain)
+
+        all_urls = domain_urls  # Inclure les URLs du domaine principal
+        vulnerable_urls = vulnerable_domain_urls  # Inclure les URLs vulnérables du domaine principal
+
+        # Énumérer les sous-domaines
+        subdomains = enumerate_subdomains(domain)
+        if not subdomains:
+            print(f"{Colors.RED}No subdomains found. Exiting...{Colors.RESET}")
+            return
+
+        # Récupérer les URLs pour chaque sous-domaine
+        for subdomain in subdomains:
+            print(f"{Colors.YELLOW}Processing subdomain: {subdomain}{Colors.RESET}")
+            urls = get_all_urls_with_gau(subdomain)  # Appel à 'gau' pour obtenir toutes les URLs
+            all_urls.extend(urls)
+            vulnerable_subdomain_urls = filter_vulnerable_urls(urls, domain)  # Filtrer pour les sous-domaines
+            vulnerable_urls.extend(vulnerable_subdomain_urls)  # Ajouter les URLs vulnérables des sous-domaines
+
+    else:
+        print(f"{Colors.RED}Invalid option. Please choose '1' or '2'.{Colors.RESET}")
         return
 
-    # Récupérer les URLs pour le domaine principal
-    print(f"{Colors.YELLOW}Processing domain: {domain}{Colors.RESET}")
-    domain_urls = get_all_urls_with_gau(domain)
-    vulnerable_domain_urls = filter_vulnerable_urls(domain_urls, domain)
-
-    all_urls = domain_urls  # Inclure les URLs du domaine principal
-    vulnerable_urls = vulnerable_domain_urls  # Inclure les URLs vulnérables du domaine principal
-
-    # Récupérer les URLs pour chaque sous-domaine
-    for subdomain in subdomains:
-        urls = get_all_urls_with_gau(subdomain)  # Appel à 'gau' pour obtenir toutes les URLs
-        all_urls.extend(urls)
-        vulnerable_subdomain_urls = filter_vulnerable_urls(urls, domain)  # Filtrer pour les sous-domaines
-        vulnerable_urls.extend(vulnerable_subdomain_urls)  # Ajouter les URLs vulnérables des sous-domaines
-
+    # Nettoyage des URLs
     cleaned_urls = clean_urls(vulnerable_urls)
 
+    # Sauvegarde des résultats complets
     with open('output.txt', 'w') as f:
         f.write("\n".join(all_urls))
     print(f"{Colors.GREEN}Saved {len(all_urls)} URLs to output.txt{Colors.RESET}")
 
+    # Sauvegarde des URLs vulnérables nettoyées
     with open('vuln.txt', 'w') as f:
         f.write("\n".join(cleaned_urls))
     print(f"{Colors.GREEN}Saved {len(cleaned_urls)} cleaned vulnerable URLs to vuln.txt{Colors.RESET}")
