@@ -4,7 +4,7 @@ import subprocess
 import requests
 from bs4 import BeautifulSoup
 import re
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 # Couleurs pour le terminal
 class Colors:
@@ -18,14 +18,13 @@ class Colors:
 def print_banner():
     banner = f'''
 {Colors.BLUE}
- █████╗ ██╗     ██╗         ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗
-██╔══██╗██║     ██║         ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║
-███████║██║     ██║         ██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║
-██╔══██║██║     ██║         ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
-██║  ██║███████╗███████╗    ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
-╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝    
-
-@ https://github.com/yaryatchii                                           
+...  █████╗ ██╗     ██╗         ██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗
+... ██╔══██╗██║     ██║         ██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║
+... ███████║██║     ██║         ██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║
+... ██╔══██║██║     ██║         ██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║
+... ██║  ██║███████╗███████╗    ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║
+... ╚═╝  ╚═╝╚══════╝╚══════╝    ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝
+... @https://github.com/yaryatchii                                         
     {Colors.RESET}
     '''
     print(banner)
@@ -41,6 +40,12 @@ def enumerate_subdomains(domain):
     subdomains = result.stdout.splitlines()
     print(f"{Colors.GREEN}Found {len(subdomains)} subdomains.{Colors.RESET}")
     return subdomains
+
+# Vérification si l'URL est dans le domaine scope (ndd et sous-domaines)
+def is_in_scope(url, base_domain):
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc
+    return domain.endswith(f".{base_domain}") or domain == base_domain
 
 # Fonction pour récupérer un jeton CSRF (si nécessaire)
 def get_csrf_token(response_text):
@@ -90,6 +95,10 @@ def crawl_subdomain(subdomain, cookies=None, user_agent=None):
         print(f"{Colors.YELLOW}Redirected to {redirect_url}{Colors.RESET}")
         response = follow_redirects(redirect_url, headers, base_url=f"https://{subdomain}")
 
+    if response is None:
+        print(f"{Colors.RED}Failed to get a valid response from {subdomain}.{Colors.RESET}")
+        return []
+
     csrf_token = get_csrf_token(response.text) if response else None
     if csrf_token:
         headers['X-CSRF-Token'] = csrf_token
@@ -100,10 +109,10 @@ def crawl_subdomain(subdomain, cookies=None, user_agent=None):
     print(f"{Colors.GREEN}Found {len(urls)} URLs on {subdomain}.{Colors.RESET}")
     return urls
 
-# Fonction pour filtrer les URLs potentiellement vulnérables
-def filter_vulnerable_urls(urls):
+# Fonction pour filtrer les URLs potentiellement vulnérables et exclure celles hors scope
+def filter_vulnerable_urls(urls, base_domain):
     print(f"{Colors.BLUE}Filtering potentially vulnerable URLs...{Colors.RESET}")
-    vulnerable_urls = [url for url in urls if re.search(r'\?.+=', url)]
+    vulnerable_urls = [url for url in urls if re.search(r'\?.+=', url) and is_in_scope(url, base_domain)]
     print(f"{Colors.GREEN}Found {len(vulnerable_urls)} potentially vulnerable URLs.{Colors.RESET}")
     return vulnerable_urls
 
@@ -129,10 +138,10 @@ def main():
     if use_cookie == 'y':
         cookies = input(f"{Colors.YELLOW}Enter your cookie: {Colors.RESET}")
 
-    use_user_agent = input(f"{Colors.YELLOW}Do you want to provide a custom user agent ? (y/n): {Colors.RESET}").lower()
+    use_user_agent = input(f"{Colors.YELLOW}Do you want to provide a custom user agent? (y/n): {Colors.RESET}").lower()
     user_agent = None
     if use_user_agent == 'y':
-        username = input(f"{Colors.YELLOW}Enter your custom user-agent: {Colors.RESET}")
+        username = input(f"{Colors.YELLOW}Enter your custom user agent: {Colors.RESET}")
         user_agent = f"user-agent:{username}"
 
     subdomains = enumerate_subdomains(domain)
@@ -146,7 +155,7 @@ def main():
     for subdomain in subdomains:
         urls = crawl_subdomain(subdomain, cookies=cookies, user_agent=user_agent)
         all_urls.extend(urls)
-        vulnerable_urls.extend(filter_vulnerable_urls(urls))
+        vulnerable_urls.extend(filter_vulnerable_urls(urls, domain))
 
     cleaned_urls = clean_urls(vulnerable_urls)
 
