@@ -59,6 +59,18 @@ def get_all_urls_with_gau(domain):
     print(f"{Colors.GREEN}Found {len(urls)} URLs using gau for {domain}.{Colors.RESET}")
     return urls
 
+# Fonction pour récupérer toutes les URLs via 'waybackurls'
+def get_all_urls_with_waybackurls(domain):
+    print(f"{Colors.BLUE}Retrieving historical URLs for {domain} using waybackurls...{Colors.RESET}")
+    command = f"waybackurls {domain}"  # Commande waybackurls pour obtenir toutes les URLs
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"{Colors.RED}Error: Unable to retrieve URLs using waybackurls for {domain}.{Colors.RESET}")
+        return []
+    urls = result.stdout.splitlines()
+    print(f"{Colors.GREEN}Found {len(urls)} historical URLs using waybackurls for {domain}.{Colors.RESET}")
+    return urls
+
 # Fonction pour filtrer les URLs potentiellement vulnérables et exclure celles hors scope
 def filter_vulnerable_urls(urls, base_domain):
     print(f"{Colors.BLUE}Filtering potentially vulnerable URLs...{Colors.RESET}")
@@ -103,7 +115,10 @@ def main():
     # Mode de scan unique du domaine principal (option 1)
     if mode == '1':
         print(f"{Colors.YELLOW}Processing only the main domain: {domain}{Colors.RESET}")
-        domain_urls = get_all_urls_with_gau(domain)
+        domain_urls_gau = get_all_urls_with_gau(domain)
+        domain_urls_wayback = get_all_urls_with_waybackurls(domain)
+        domain_urls = domain_urls_gau + domain_urls_wayback  # Combine URLs from gau and waybackurls
+        
         vulnerable_domain_urls = filter_vulnerable_urls(domain_urls, domain)
         all_urls = domain_urls
         vulnerable_urls = vulnerable_domain_urls
@@ -112,7 +127,12 @@ def main():
     elif mode == '2':
         # Récupérer les URLs pour le domaine principal
         print(f"{Colors.YELLOW}Processing domain: {domain}{Colors.RESET}")
-        domain_urls = get_all_urls_with_gau(domain)
+        
+        # Utiliser gau et waybackurls pour le domaine principal
+        domain_urls_gau = get_all_urls_with_gau(domain)
+        domain_urls_wayback = get_all_urls_with_waybackurls(domain)
+        domain_urls = domain_urls_gau + domain_urls_wayback  # Combine URLs from gau and waybackurls
+        
         vulnerable_domain_urls = filter_vulnerable_urls(domain_urls, domain)
 
         all_urls = domain_urls  # Inclure les URLs du domaine principal
@@ -127,9 +147,14 @@ def main():
         # Récupérer les URLs pour chaque sous-domaine
         for subdomain in subdomains:
             print(f"{Colors.YELLOW}Processing subdomain: {subdomain}{Colors.RESET}")
-            urls = get_all_urls_with_gau(subdomain)  # Appel à 'gau' pour obtenir toutes les URLs
-            all_urls.extend(urls)
-            vulnerable_subdomain_urls = filter_vulnerable_urls(urls, domain)  # Filtrer pour les sous-domaines
+            
+            # Utiliser gau et waybackurls pour chaque sous-domaine
+            subdomain_urls_gau = get_all_urls_with_gau(subdomain)
+            subdomain_urls_wayback = get_all_urls_with_waybackurls(subdomain)
+            subdomain_urls = subdomain_urls_gau + subdomain_urls_wayback  # Combine URLs from gau and waybackurls
+            
+            all_urls.extend(subdomain_urls)
+            vulnerable_subdomain_urls = filter_vulnerable_urls(subdomain_urls, domain)  # Filtrer pour les sous-domaines
             vulnerable_urls.extend(vulnerable_subdomain_urls)  # Ajouter les URLs vulnérables des sous-domaines
 
     else:
