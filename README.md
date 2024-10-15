@@ -14,6 +14,7 @@
 <ul>
     <li>Énumération des sous-domaines avec <code>subfinder</code></li>
     <li>Crawling des URLs pour chaque sous-domaine</li>
+    <li>Crawling des WAYBACKURLS pour chaque sous-domaine/domaine</li>
     <li>Filtrage des URLs potentiellement vulnérables à l'injection</li>
     <li>Nettoyage des URLs en supprimant les paramètres après le `=` pour une analyse ultérieure.</li>
     <li>Sauvegarde des URLs trouvées dans deux fichiers :
